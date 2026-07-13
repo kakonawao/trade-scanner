@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trade-scanner"
+version = "0.1.0"
+description = "Scan financial instruments for technical patterns"
+requires-python = ">=3.14"
+dependencies = [
+    "yfinance>=0.2.30",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "tabulate>=0.9.0",
+]
+
+[project.scripts]
+trade-scanner = "trade_scanner.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.3.0"]
+
+[tool.setuptools.packages.find]
+include = ["trade_scanner*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that hit external services (run with -m integration)",
+]
+addopts = ["-m", "not integration"]
+
