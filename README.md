@@ -20,16 +20,18 @@ trade-scanner --instruments <file> [options]
 | Flag | Default | Description |
 |---|---|---|
 | `-i, --instruments` | (required) | Path to instrument list file |
-| `-p, --pattern` | `all` | Pattern(s) to scan for |
+| `-p, --pattern` | all | Pattern(s) to scan for (`vcp`, `flag`, or `all`) |
 | `--prices-provider` | `yahoo` | Price data source |
 | `-m, --min-score` | `50` | Minimum score threshold |
 | `-o, --output` | `table` | Output format: `table`, `csv`, `json` |
-| `--period` | `1y` | Lookback period (e.g., `1y`, `6mo`, `3mo`) |
+| `-v, --verbose` | | Show detailed per-pattern tables |
+| `--period` | `1y` | Lookback period (e.g. `1y`, `6mo`, `3mo`) |
+| `-e, --end-date` | | End date for historical backtesting (YYYY-MM-DD) |
 
 ### Example
 
 ```bash
-trade-scanner -i instruments.txt -o table
+trade-scanner -i instruments.txt
 ```
 
 ## Input file
@@ -68,37 +70,73 @@ GBP/JPY
 `XNYS`, `XOSL`, `XPAR`, `XSES`, `XSTO`, `XSWX`, `XTAE`, `XTKS`, `XTSE`,
 `XTSX`, `XWAR`
 
-## Output
-
-Common columns for all patterns: `symbol`, `score`, `signal`.
+## Patterns
 
 ### VCP (Volatility Contraction Pattern)
 
-Additional columns:
+Detects Mark Minervini-style VCP setups: a peak-to-trough decline of 5–35%,
+volatility contraction across multiple stages, tight price action, volume
+dry-up, and recovery toward the peak.
 
-| Column | Description |
-|---|---|
-| `decline_pct` | Peak-to-trough decline (%) |
-| `contraction_ratio` | Volatility contraction (ATR_5_end / ATR_5_start) |
-| `contraction_stages` | Count of contracting volatility phases |
-| `tight_range_pct` | Average daily range over last 5 days (%) |
-| `vol_dry` | Volume drying up below long-term average |
-| `is_tight` | Tight range flag |
-| `peak_price` | Peak high price |
-| `current_price` | Most recent close |
-| `peak_date` | Date of the peak |
+Scoring criteria (max 100): contraction (22), tightness (17), volume dry-up
+(17), decline (13), recovery (13), stages (10), peak distance (4), trend (4).
 
-**Signal levels:** `strong` (≥70), `mid` (50–69), `weak` (35–49) on a 100-point basis.
+### Bull Flag
 
-### Example output (table)
+Detects flag/pennant patterns: a sharp rally (pole) of 15–50%, followed by
+a shallow pullback (retracement ≤ 50%) on declining volatility, with volume
+dry-up in the flag.
+
+Scoring criteria (max 100): retracement (20), pole height (15), tightness
+(15), volume (15), breakout proximity (15), duration (10), trend (10).
+
+## Output
+
+### Non-verbose (default)
+
+One row per symbol, one column per pattern. Score is shown with optional
+criteria in parentheses (e.g., `40 (5/8)`). A dash (`—`) means the pattern
+did not match for that symbol. Rows with no scores above `--min-score` are
+hidden.
 
 ```
-symbol      score  signal    decline_pct    contraction_ratio    contraction_stages
-------  -------  --------  ------------  ------------------  --------------------
-AAPL          82  strong           15.3                0.45                    3
-XPAR:SAP      65  mid             22.1                0.62                    2
-EUR/USD       48  weak             8.4                0.78                    1
+symbol    vcp       flag      price
+--------  --------  --------  -------
+AAPL      72 (6/8)  40 (4/7)  245.83
+XPAR:SAP  55 (4/8)  —         68.12
 ```
+
+### Verbose (`-v`)
+
+Separate tables per pattern with detailed columns, sorted by score descending.
+
+```
+vcp
+symbol    peak date    peak    decline    contraction    recovery    price    trend
+--------  -----------  ------  ---------  -------------  ----------  -------  -------
+AAPL      2025-12-15   258.3     -15.3%          0.45       55.0%    245.83  steady
+XPAR:SAP  2025-11-20    77.5     -22.1%          0.62       40.2%     68.12  rising
+
+flag
+symbol    pole date    pole gain    retrace    flag bars    breakout    price
+--------  -----------  -----------  ---------  -----------  ----------  -------
+AAPL      2026-03-10       22.5%      35.0%           12        2.1%    245.83
+```
+
+### Errors
+
+Always shown as a separate table in both modes.
+
+```
+errors
+symbol    pattern   error
+--------  --------  --------------------------
+FAKE      vcp       No price data available
+```
+
+### CSV / JSON
+
+Flat format: one row per pattern per instrument, all columns present.
 
 ## Tests
 
