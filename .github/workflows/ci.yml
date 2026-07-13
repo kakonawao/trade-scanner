@@ -26,4 +26,4 @@ jobs:
         run: uvx ruff check
 
       - name: Test
-        run: uv run pytest tests/ -q
+        run: uv run --no-sync pytest tests/ -q
