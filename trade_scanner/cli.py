@@ -174,7 +174,14 @@ def _output_csv(rows: list[dict]) -> None:
 
 
 def _output_json(rows: list[dict]) -> None:
-    print(json.dumps(rows, indent=2))
+    grouped: dict[str, dict[str, dict]] = {}
+    for row in rows:
+        sym = row.pop("symbol", "")
+        pat = row.pop("pattern", "")
+        if sym not in grouped:
+            grouped[sym] = {}
+        grouped[sym][pat] = row
+    print(json.dumps(grouped, indent=2))
 
 
 def main() -> None:
