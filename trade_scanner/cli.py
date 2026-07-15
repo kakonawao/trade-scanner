@@ -91,12 +91,16 @@ def _extract_rows(results) -> list[dict]:
             "symbol": str(r.symbol),
             "pattern": r.pattern,
         }
+        row["score"] = r.score
         if r.details is not None:
             met = getattr(r.details, "criteria_met", None)
             total = getattr(r.details, "criteria_total", None)
+            failed = getattr(r.details, "criteria_failed", None)
             if met is not None and total is not None:
-                row["criteria"] = f"{met}/{total}"
-        row["score"] = r.score
+                label = f"{met}/{total}"
+                if failed:
+                    label += f": -{',-'.join(failed)}"
+                row["criteria"] = label
         if r.error:
             row["error"] = r.error
         detail_fields, field_labels, _pct = _fields_for(r.pattern)
@@ -120,16 +124,6 @@ def _fmt_pct(rows: list[dict]) -> list[dict]:
         {k: f"{v:.1f}%" if k in pct_keys else v for k, v in row.items()}
         for row in rows
     ]
-
-
-def _group_results(results) -> OrderedDict:
-    groups: OrderedDict[str, list] = OrderedDict()
-    for r in results:
-        sym = str(r.symbol)
-        if sym not in groups:
-            groups[sym] = []
-        groups[sym].append(r)
-    return groups
 
 
 def _build_summary_row(symbol: str, group: list, min_score: int, pattern_names: list[str]) -> dict:
